@@ -2,110 +2,468 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Study Suite — Editor</title>
-  <link rel="stylesheet" href="style.css"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>Study Cards — Editor</title>
+  <style>
+*{box-sizing:border-box}
+:root{--bg:#0f1115;--panel:#151922;--text:#e7e9ee;--muted:#9aa3b2;--accent:#7aa2f7;--border:#2a3140}
+html,body{height:100%}
+body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);
+background:radial-gradient(circle at 20% 0%,#0e1420,#0b0f18 45%,#0a0d14);overflow:hidden}
+.topbar{position:sticky;top:0;z-index:3;border-bottom:1px solid var(--border);
+background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01));padding:8px 12px}
+.brand{font-weight:700;margin-bottom:6px}
+.toolbar{display:flex;gap:12px;flex-wrap:nowrap;align-items:center}
+.scroll-x{overflow-x:auto;padding-bottom:6px}
+.tool-group{display:inline-flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--border);
+background:#101520;border-radius:12px}
+.tool,.side,.deck-panel button{background:#1a2030;color:var(--text);border:1px solid var(--border);border-radius:10px;
+padding:8px 12px;cursor:pointer;transition:120ms ease;white-space:nowrap}
+.tool:hover,.side:hover,.deck-panel button:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(0,0,0,.25)}
+.tool.active,.side.active{outline:2px solid var(--accent)}
+.inline{display:flex;gap:8px;align-items:center;color:var(--muted)}
+.inline input[type=range]{width:140px}
+.layout{display:grid;grid-template-columns:320px 1fr;grid-template-rows:1fr;height:calc(100vh - 92px)}
+.sidebar{border-right:1px solid var(--border);padding:12px;overflow-y:auto}
+.deck-panel{display:grid;gap:12px}
+.deck-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#deck-info{color:var(--muted)}
+.canvas-wrap{position:relative;margin:12px;border:1px solid var(--border);border-radius:16px;overflow:hidden;
+background:#0b0f15;box-shadow:0 20px 50px rgba(0,0,0,.35);height:calc(100% - 24px)}
+canvas{display:block;width:100%;height:100%}
+#grid,#draw{position:absolute;inset:0}
+.footnote{padding:8px 12px;color:var(--muted);border-top:1px solid var(--border)}
+.popover{position:absolute;background:#101520;border:1px solid var(--border);border-radius:10px;padding:10px;
+box-shadow:0 10px 24px rgba(0,0,0,.35)}
+.popover label{color:var(--muted);display:flex;gap:8px;align-items:center}
+.popover input[type=range]{width:160px}
+.hidden{display:none}
+@media(max-width:1000px){.layout{grid-template-columns:260px 1fr}}
+
+</style>
 </head>
 <body>
-  <header>
-    <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;"><div><a class="tool" href="index.html">← Home</a></div><h1 style="margin:0;">Study Cards — Editor</h1><div><span id="set-indicator" class="inline" style="color:var(--muted)">Set: <strong id="set-name">(set)</strong></span></div></div>
-    <div class="toolbar">
+  <header class="topbar">
+    <div class="brand">Study Cards — Editor</div>
+    <div class="toolbar scroll-x">
       <div class="tool-group">
-        <button id="tool-pen" class="tool active" title="Pen (P)">✏️ Pen</button>
-        <label class="inline">
-          <span>Size</span>
-          <input id="pen-size" type="range" min="1" max="12" value="2" />
-        </label>
-        <label class="inline" title="Rotate selected image">
-          <span>Rotate</span>
-          <input id="image-rotate" type="range" min="-180" max="180" value="0"/>
-        </label>
-        <button id="btn-rot-left" class="tool" title="Rotate -15°">⟲ -15°</button>
-        <button id="btn-rot-right" class="tool" title="Rotate +15°">⟳ +15°</button>
-      </div>
-
-      <div class="tool-group">
-        <button id="tool-eraser" class="tool" title="Eraser (E)">🧽 Eraser</button>
-        <label class="inline">
-          <span>Size</span>
-          <input id="eraser-size" type="range" min="6" max="45" value="18" />
-        </label>
-        <label class="inline" title="Rotate selected image">
-          <span>Rotate</span>
-          <input id="image-rotate" type="range" min="-180" max="180" value="0"/>
-        </label>
-        <button id="btn-rot-left" class="tool" title="Rotate -15°">⟲ -15°</button>
-        <button id="btn-rot-right" class="tool" title="Rotate +15°">⟳ +15°</button>
-      </div>
-
-      <div class="tool-group">
+        <button id="tool-pen" class="tool active" title="Pen (P) — long-press to change thickness">✏️ Pen</button>
+        <div id="pen-pop" class="popover hidden">
+          <label>Thickness <input id="pen-size" type="range" min="1" max="12" value="2"/></label>
+        </div>
+        <button id="tool-eraser" class="tool" title="Eraser (E) — long-press to change thickness">🧽 Eraser</button>
+        <div id="eraser-pop" class="popover hidden">
+          <label>Thickness <input id="eraser-size" type="range" min="6" max="45" value="18"/></label>
+        </div>
         <button id="tool-select" class="tool" title="Select/Move images (V)">🖱️ Select</button>
         <button id="btn-add-image" class="tool" title="Add image">🖼️ Add image</button>
         <input id="image-file" type="file" accept="image/*" style="display:none"/>
-        <label class="inline" title="Scale selected image">
-          <span>Img scale</span>
-          <input id="image-scale" type="range" min="10" max="300" value="100"/>
+      </div>
+
+      <div class="tool-group" id="image-controls">
+        <label class="inline"><span>Img scale</span>
+          <input id="image-scale" type="range" min="10" max="300" value="100" disabled/>
         </label>
-        <label class="inline" title="Rotate selected image">
-          <span>Rotate</span>
-          <input id="image-rotate" type="range" min="-180" max="180" value="0"/>
+        <label class="inline"><span>Rotate</span>
+          <input id="image-rotate" type="range" min="-180" max="180" value="0" disabled/>
         </label>
-        <button id="btn-rot-left" class="tool" title="Rotate -15°">⟲ -15°</button>
-        <button id="btn-rot-right" class="tool" title="Rotate +15°">⟳ +15°</button>
+        <button id="btn-rot-left" class="tool" disabled>⟲ -15°</button>
+        <button id="btn-rot-right" class="tool" disabled>⟳ +15°</button>
       </div>
 
       <div class="tool-group">
         <button id="btn-undo" class="tool" title="Undo (Ctrl+Z)">↶ Undo</button>
         <button id="btn-redo" class="tool" title="Redo (Ctrl+Y)">↷ Redo</button>
-        <button id="btn-clear" class="tool" title="Clear side">🗑️ Clear side</button>
+        <button id="btn-clear" class="tool" title="Clear side">🗑️ Clear</button>
       </div>
 
       <div class="tool-group">
-        <button id="btn-save-png" class="tool" title="Export current side as PNG">⬇️ PNG</button>
-        <button id="btn-export-deck" class="tool" title="Export deck JSON">⬇️ Deck</button>
-        <button id="btn-import-deck" class="tool" title="Import deck JSON">⬆️ Deck</button>
+        <button id="btn-save-png" class="tool">⬇️ PNG</button>
+        <button id="btn-export-deck" class="tool">⬇️ Deck</button>
+        <button id="btn-import-deck" class="tool">⬆️ Deck</button>
         <input id="deck-file" type="file" accept="application/json" style="display:none"/>
       </div>
     </div>
   </header>
 
-  <main>
-    <aside>
-      <div class="deck-controls">
-        <button id="btn-prev">◀</button>
-        <span id="deck-info">Card 1 / 1</span>
-        <button id="btn-next">▶</button>
+  <main class="layout">
+    <aside class="sidebar">
+      <div class="deck-panel">
+        <div class="deck-row">
+          <button id="btn-prev">◀</button>
+          <span id="deck-info">Card 1 / 1</span>
+          <button id="btn-next">▶</button>
+        </div>
+        <div class="deck-row">
+          <button id="btn-front" class="side active">Front</button>
+          <button id="btn-back" class="side">Back</button>
+        </div>
+        <div class="deck-row">
+          <button id="btn-new-card">➕ New</button>
+          <button id="btn-duplicate-card">📄 Duplicate</button>
+          <button id="btn-delete-card">🗑️ Delete</button>
+        </div>
+        <details class="help">
+          <summary>Help</summary>
+          <ul>
+            <li><b>P</b>=Pen, <b>E</b>=Eraser, <b>V</b>=Select</li>
+            <li>Long-press Pen/Eraser to change thickness</li>
+            <li>Drag images to move; use top bar to scale/rotate</li>
+          </ul>
+        </details>
       </div>
-      <div class="side-controls">
-        <button id="btn-front" class="side active">Front</button>
-        <button id="btn-back" class="side">Back</button>
-      </div>
-      <div class="card-controls">
-        <button id="btn-new-card">➕ New card</button>
-        <button id="btn-duplicate-card">📄 Duplicate</button>
-        <button id="btn-delete-card">🗑️ Delete card</button>
-      </div>
-      <details class="help">
-        <summary>Help</summary>
-        <ul>
-          <li><b>P</b>=Pen, <b>E</b>=Eraser, <b>V</b>=Select/Move</li>
-          <li>Images: Add via button. Drag to move. Use “Img scale” to resize.</li>
-          <li>Everything is saved locally (browser storage). Export deck to back up.</li>
-        </ul>
-      </details>
     </aside>
 
     <section class="canvas-wrap">
-      <canvas id="grid" width="1200" height="800"></canvas>
-      <canvas id="draw" width="1200" height="800"></canvas>
+      <canvas id="grid"></canvas>
+      <canvas id="draw"></canvas>
     </section>
   </main>
 
-  <footer>
+  <footer class="footnote">
     <span>All drawing stays on your device. No OCR. Local-only.</span>
   </footer>
 
-  <script src="sets.js"></script>
-  <script src="editor.js"></script>
+  <script>
+(() => {
+  const grid = document.getElementById('grid');
+  const draw = document.getElementById('draw');
+  const gctx = grid.getContext('2d');
+  const ctx = draw.getContext('2d');
+
+  const toolPen = document.getElementById('tool-pen');
+  const toolEraser = document.getElementById('tool-eraser');
+  const toolSelect = document.getElementById('tool-select');
+
+  const penPop = document.getElementById('pen-pop');
+  const eraserPop = document.getElementById('eraser-pop');
+  const penSize = document.getElementById('pen-size');
+  const eraserSize = document.getElementById('eraser-size');
+
+  const btnAddImage = document.getElementById('btn-add-image');
+  const imageFile = document.getElementById('image-file');
+
+  const imageScale = document.getElementById('image-scale');
+  const imageRotate = document.getElementById('image-rotate');
+  const btnRotLeft = document.getElementById('btn-rot-left');
+  const btnRotRight = document.getElementById('btn-rot-right');
+
+  const btnUndo = document.getElementById('btn-undo');
+  const btnRedo = document.getElementById('btn-redo');
+  const btnClear = document.getElementById('btn-clear');
+  const btnSavePNG = document.getElementById('btn-save-png');
+  const btnExportDeck = document.getElementById('btn-export-deck');
+  const btnImportDeck = document.getElementById('btn-import-deck');
+  const deckFile = document.getElementById('deck-file');
+
+  const btnPrev = document.getElementById('btn-prev');
+  const btnNext = document.getElementById('btn-next');
+  const deckInfo = document.getElementById('deck-info');
+  const btnFront = document.getElementById('btn-front');
+  const btnBack = document.getElementById('btn-back');
+  const btnNewCard = document.getElementById('btn-new-card');
+  const btnDuplicateCard = document.getElementById('btn-duplicate-card');
+  const btnDeleteCard = document.getElementById('btn-delete-card');
+
+  let state = {
+    tool: 'pen',
+    side: 'front',
+    deck: [],
+    index: 0,
+    undoStack: [],
+    redoStack: [],
+    pointer: { down:false, x:0, y:0 },
+    currentStroke: null,
+    selectedImageId: null
+  };
+
+  const GRID_SIZE = 24;
+  const BG_COLOR = '#0b0f15';
+  const GRID_COLOR = 'rgba(122,162,247,0.12)';
+  const GUIDE_COLOR = 'rgba(160,170,190,0.35)';
+
+  function scaledDims(im){const w=im.w*(im.scale/100); const h=im.h*(im.scale/100); return {w,h};}
+  function centerOf(im){const {w,h}=scaledDims(im); return {cx:im.x+w/2, cy:im.y+h/2};}
+  function degToRad(d){return d*Math.PI/180;}
+
+  function drawGrid(){
+    const w=grid.width,h=grid.height;
+    gctx.clearRect(0,0,w,h);
+    gctx.fillStyle=BG_COLOR; gctx.fillRect(0,0,w,h);
+    gctx.strokeStyle=GRID_COLOR; gctx.lineWidth=1; gctx.beginPath();
+    for(let x=0;x<=w;x+=GRID_SIZE){gctx.moveTo(x+.5,0);gctx.lineTo(x+.5,h);}
+    for(let y=0;y<=h;y+=GRID_SIZE){gctx.moveTo(0,y+.5);gctx.lineTo(w,y+.5);}
+    gctx.stroke();
+    gctx.strokeStyle=GUIDE_COLOR; gctx.lineWidth=2; gctx.strokeRect(8.5,8.5,w-17,h-17);
+  }
+
+  function createEmptySide(){return {strokes:[], images:[]};}
+  function createCard(){return {front:createEmptySide(), back:createEmptySide(), createdAt:Date.now()};}
+
+  function ensureDeckInit(){
+    const saved=localStorage.getItem('study_deck_v4');
+    if(saved){try{state.deck=JSON.parse(saved);}catch(e){state.deck=[createCard()];}}
+    else{state.deck=[createCard()];}
+  }
+  function saveDeckLocal(){localStorage.setItem('study_deck_v4', JSON.stringify(state.deck));}
+
+  function pushUndo(){const s=JSON.stringify(state.deck[state.index]); state.undoStack.push(s); if(state.undoStack.length>50)state.undoStack.shift(); state.redoStack.length=0;}
+  function applySnapshot(json){state.deck[state.index]=JSON.parse(json); render(); saveDeckLocal();}
+  function currentSideData(){return state.deck[state.index][state.side];}
+
+  function setTool(which){
+    state.tool=which;
+    [toolPen,toolEraser,toolSelect].forEach(b=>b.classList.remove('active'));
+    ({pen:toolPen,eraser:toolEraser,select:toolSelect}[which]).classList.add('active');
+    draw.style.cursor = which==='select'?'move':'crosshair';
+    if(which!=='select') state.selectedImageId=null;
+    hidePopovers(); refreshImageControls(); render();
+  }
+  function setSide(side){
+    state.side=side; [btnFront,btnBack].forEach(b=>b.classList.remove('active')); (side==='front'?btnFront:btnBack).classList.add('active');
+    state.selectedImageId=null; refreshImageControls(); render();
+  }
+  function setIndex(i){state.index=i; state.selectedImageId=null; updateDeckInfo(); refreshImageControls(); render();}
+  function updateDeckInfo(){deckInfo.textContent=`Card ${state.index+1} / ${state.deck.length}`}
+
+  function deepClone(o){return JSON.parse(JSON.stringify(o));}
+
+  function render(){
+    ctx.clearRect(0,0,draw.width,draw.height);
+    const side=currentSideData();
+
+    for(const img of side.images){
+      if(!img.__image) continue;
+      const a=(typeof img.angle==='number')?img.angle:0;
+      const {w,h}=scaledDims(img); const {cx,cy}=centerOf(img);
+      ctx.save(); ctx.translate(cx,cy); ctx.rotate(degToRad(a));
+      ctx.drawImage(img.__image,-w/2,-h/2,w,h);
+      if(state.selectedImageId===img.id){ctx.setLineDash([6,6]); ctx.strokeStyle='#7aa2f7'; ctx.lineWidth=2; ctx.strokeRect(-w/2,-h/2,w,h);}
+      ctx.restore();
+    }
+
+    for(const s of side.strokes){
+      ctx.save(); ctx.lineJoin='round'; ctx.lineCap='round'; ctx.globalCompositeOperation=s.mode||'source-over';
+      ctx.strokeStyle=s.color||'#e7e9ee'; ctx.lineWidth=s.size||2;
+      ctx.beginPath(); for(let i=0;i<s.points.length;i++){const p=s.points[i]; if(i===0)ctx.moveTo(p.x,p.y); else ctx.lineTo(p.x,p.y);} ctx.stroke(); ctx.restore();
+    }
+  }
+
+  function loadImageToImageObj(file){
+    return new Promise((resolve,reject)=>{
+      const reader=new FileReader();
+      reader.onload=e=>{const img=new Image(); img.onload=()=>resolve({src:e.target.result,w:img.width,h:img.height,__image:img}); img.onerror=reject; img.src=e.target.result;};
+      reader.onerror=reject; reader.readAsDataURL(file);
+    });
+  }
+
+  function hitTestImage(x,y){
+    const side=currentSideData();
+    for(let i=side.images.length-1;i>=0;i--){
+      const im=side.images[i]; const a=(typeof im.angle==='number')?im.angle:0;
+      const {w,h}=scaledDims(im); const {cx,cy}=centerOf(im);
+      const dx=x-cx, dy=y-cy; const ca=Math.cos(degToRad(-a)), sa=Math.sin(degToRad(-a));
+      const lx=dx*ca - dy*sa; const ly=dx*sa + dy*ca;
+      if(lx>=-w/2 && lx<=w/2 && ly>=-h/2 && ly<=h/2) return im.id;
+    }
+    return null;
+  }
+
+  function pointerPos(evt){
+    const rect=draw.getBoundingClientRect();
+    const x=(evt.clientX-rect.left)*(draw.width/rect.width);
+    const y=(evt.clientY-rect.top)*(draw.height/rect.height);
+    return {x,y};
+  }
+
+  function onPointerDown(evt){
+    const {x,y}=pointerPos(evt); state.pointer={down:true,x,y};
+    const side=currentSideData();
+
+    if(state.tool==='pen' || state.tool==='eraser'){
+      pushUndo();
+      const size= state.tool==='pen'?Number(penSize.value):Number(eraserSize.value);
+      const mode= state.tool==='pen'?'source-over':'destination-out';
+      state.currentStroke={points:[{x,y}], size, mode, color:'#e7e9ee'};
+      side.strokes.push(state.currentStroke); render(); saveDeckLocal(); return;
+    }
+
+    if(state.tool==='select'){
+      const id=hitTestImage(x,y); state.selectedImageId=id; state.dragOffset=null;
+      if(id){ const im=side.images.find(m=>m.id===id); const {w,h}=scaledDims(im); state.dragOffset={dx:x-im.x, dy:y-im.y, w,h}; syncImageControls(im); }
+      else{ syncImageControls(null); }
+      render(); return;
+    }
+  }
+
+  function onPointerMove(evt){
+    const {x,y}=pointerPos(evt);
+    if(!state.pointer.down) return;
+    if(state.tool==='pen' || state.tool==='eraser'){
+      if(state.currentStroke){ state.currentStroke.points.push({x,y}); render(); }
+      return;
+    }
+    if(state.tool==='select' && state.selectedImageId && state.dragOffset){
+      const im=currentSideData().images.find(m=>m.id===state.selectedImageId);
+      im.x = x - state.dragOffset.dx; im.y = y - state.dragOffset.dy;
+      render(); saveDeckLocal(); return;
+    }
+  }
+
+  function onPointerUp(){ state.pointer.down=false; state.currentStroke=null; }
+
+  function addImageFromFile(file){
+    if(!file) return;
+    loadImageToImageObj(file).then(info=>{
+      pushUndo();
+      const side=currentSideData();
+      const id='img_'+Math.random().toString(36).slice(2,8);
+      const imgObj={id,x:40,y:40,w:info.w,h:info.h,scale:50,angle:0,src:info.src,__image:info.__image};
+      side.images.push(imgObj); state.selectedImageId=id; syncImageControls(imgObj,true);
+      render(); saveDeckLocal();
+    }).catch(err=>alert('Could not load image: '+err));
+  }
+
+  function attachImageBitmaps(){
+    for(const card of state.deck){
+      for(const sideName of ['front','back']){
+        for(const im of card[sideName].images){
+          const img=new Image(); img.onload=()=>{im.__image=img; render();}; img.src=im.src;
+        }
+      }
+    }
+  }
+
+  function clearSide(){ pushUndo(); const side=currentSideData(); side.strokes=[]; side.images=[]; state.selectedImageId=null; refreshImageControls(); render(); saveDeckLocal(); }
+
+  function savePNG(){
+    const tmp=document.createElement('canvas'); tmp.width=draw.width; tmp.height=draw.height;
+    const c=tmp.getContext('2d'); c.drawImage(grid,0,0); c.drawImage(draw,0,0);
+    const url=tmp.toDataURL('image/png'); const a=document.createElement('a'); const idx=String(state.index+1).padStart(3,'0');
+    a.href=url; a.download=`card-${idx}-${state.side}.png`; a.click();
+  }
+
+  function exportDeck(){
+    const data=JSON.stringify(state.deck); const blob=new Blob([data],{type:'application/json'});
+    const url=URL.createObjectURL(blob); const a=document.createElement('a'); const ts=new Date().toISOString().replace(/[:.]/g,'-');
+    a.href=url; a.download=`deck-${ts}.json`; a.click(); URL.revokeObjectURL(url);
+  }
+
+  function importDeckFile(file){
+    const reader=new FileReader();
+    reader.onload=e=>{ try{ const deck=JSON.parse(e.target.result); if(!Array.isArray(deck)) throw new Error('Invalid deck');
+      state.deck=deck; state.index=0; state.undoStack=[]; state.redoStack=[]; attachImageBitmaps(); updateDeckInfo(); refreshImageControls(); render(); saveDeckLocal();
+    }catch(err){ alert('Import failed: '+err.message); } };
+    reader.readAsText(file);
+  }
+
+  function duplicateCard(){ const copy=deepClone(state.deck[state.index]); state.deck.splice(state.index+1,0,copy); setIndex(state.index+1); saveDeckLocal(); }
+  function deleteCard(){ if(state.deck.length===1){ clearSide(); return; } state.deck.splice(state.index,1); if(state.index>=state.deck.length) state.index=state.deck.length-1; updateDeckInfo(); render(); saveDeckLocal(); }
+  function newCard(){ state.deck.splice(state.index+1,0,createCard()); setIndex(state.index+1); saveDeckLocal(); }
+
+  function handleKey(e){
+    if(e.ctrlKey && e.key.toLowerCase()==='z'){e.preventDefault(); btnUndo.click();}
+    if(e.ctrlKey && e.key.toLowerCase()==='y'){e.preventDefault(); btnRedo.click();}
+    if(e.key.toLowerCase()==='p') setTool('pen');
+    if(e.key.toLowerCase()==='e') setTool('eraser');
+    if(e.key.toLowerCase()==='v') setTool('select');
+  }
+
+  let pressTimer=null;
+  function setupLongPress(btn,popEl){
+    function startPress(){
+      hidePopovers();
+      const rect=btn.getBoundingClientRect();
+      popEl.style.left=rect.left+'px'; popEl.style.top=(rect.bottom+6+window.scrollY)+'px';
+      pressTimer=setTimeout(()=>{popEl.classList.remove('hidden');},700);
+    }
+    function cancel(){clearTimeout(pressTimer); pressTimer=null;}
+    function hideOutside(ev){ if(!popEl.contains(ev.target) && ev.target!==btn) popEl.classList.add('hidden'); }
+    btn.addEventListener('mousedown', startPress);
+    btn.addEventListener('touchstart', startPress, {passive:true});
+    ['mouseup','mouseleave','touchend','touchcancel'].forEach(e=>btn.addEventListener(e,cancel));
+    document.addEventListener('mousedown', hideOutside);
+    document.addEventListener('touchstart', hideOutside, {passive:true});
+  }
+  function hidePopovers(){penPop.classList.add('hidden'); eraserPop.classList.add('hidden');}
+
+  function refreshImageControls(){
+    const hasSel=!!state.selectedImageId;
+    [imageScale,imageRotate,btnRotLeft,btnRotRight].forEach(el=>el.disabled=!hasSel);
+    if(!hasSel){imageScale.value='100'; imageRotate.value='0';}
+  }
+  function syncImageControls(im, focus=false){
+    if(!im){ refreshImageControls(); return; }
+    state.selectedImageId=im.id;
+    [imageScale,imageRotate,btnRotLeft,btnRotRight].forEach(el=>el.disabled=false);
+    imageScale.value=String(im.scale??100); imageRotate.value=String(im.angle??0);
+    if(focus) imageScale.focus();
+  }
+
+  toolPen.addEventListener('click', ()=>setTool('pen'));
+  toolEraser.addEventListener('click', ()=>setTool('eraser'));
+  toolSelect.addEventListener('click', ()=>setTool('select'));
+  setupLongPress(toolPen, penPop);
+  setupLongPress(toolEraser, eraserPop);
+
+  btnAddImage.addEventListener('click', ()=>imageFile.click());
+  imageFile.addEventListener('change', e=>addImageFromFile(e.target.files[0]));
+
+  imageScale.addEventListener('input', ()=>{
+    if(!state.selectedImageId) return;
+    const im=currentSideData().images.find(m=>m.id===state.selectedImageId); if(!im) return;
+    const {cx,cy}=centerOf(im); im.scale=Number(imageScale.value); const {w,h}=scaledDims(im); im.x=cx-w/2; im.y=cy-h/2;
+    render(); saveDeckLocal();
+  });
+  imageRotate.addEventListener('input', ()=>{
+    if(!state.selectedImageId) return;
+    const im=currentSideData().images.find(m=>m.id===state.selectedImageId); if(!im) return;
+    im.angle=Number(imageRotate.value); render(); saveDeckLocal();
+  });
+  btnRotLeft.addEventListener('click', ()=>{ if(!state.selectedImageId) return; const im=currentSideData().images.find(m=>m.id===state.selectedImageId); if(!im) return; im.angle=Math.max(-180,(im.angle||0)-15); imageRotate.value=String(im.angle); render(); saveDeckLocal(); });
+  btnRotRight.addEventListener('click', ()=>{ if(!state.selectedImageId) return; const im=currentSideData().images.find(m=>m.id===state.selectedImageId); if(!im) return; im.angle=Math.min(180,(im.angle||0)+15); imageRotate.value=String(im.angle); render(); saveDeckLocal(); });
+
+  btnUndo.addEventListener('click', ()=>{ if(!state.undoStack.length) return; const snap=state.undoStack.pop(); state.redoStack.push(JSON.stringify(state.deck[state.index])); applySnapshot(snap); });
+  btnRedo.addEventListener('click', ()=>{ if(!state.redoStack.length) return; const snap=state.redoStack.pop(); state.undoStack.push(JSON.stringify(state.deck[state.index])); applySnapshot(snap); });
+  btnClear.addEventListener('click', clearSide);
+
+  btnSavePNG.addEventListener('click', savePNG);
+  btnExportDeck.addEventListener('click', exportDeck);
+  btnImportDeck.addEventListener('click', ()=>deckFile.click());
+  deckFile.addEventListener('change', e=>importDeckFile(e.target.files[0]));
+
+  btnPrev.addEventListener('click', ()=>{ if(state.index>0) setIndex(state.index-1); });
+  btnNext.addEventListener('click', ()=>{ if(state.index<state.deck.length-1) setIndex(state.index+1); });
+  btnFront.addEventListener('click', ()=>setSide('front'));
+  btnBack.addEventListener('click', ()=>setSide('back'));
+  btnNewCard.addEventListener('click', newCard);
+  btnDuplicateCard.addEventListener('click', duplicateCard);
+  btnDeleteCard.addEventListener('click', deleteCard);
+
+  draw.addEventListener('mousedown', onPointerDown);
+  window.addEventListener('mousemove', onPointerMove);
+  window.addEventListener('mouseup', onPointerUp);
+  draw.addEventListener('touchstart', e=>{ if(e.touches.length) onPointerDown(e.touches[0]); }, {passive:true});
+  draw.addEventListener('touchmove', e=>{ if(e.touches.length) onPointerMove(e.touches[0]); }, {passive:true});
+  draw.addEventListener('touchend', onPointerUp);
+  window.addEventListener('keydown', handleKey);
+
+  ensureDeckInit(); attachImageBitmaps(); updateDeckInfo(); refreshImageControls();
+
+  function resizeCanvasToContainer(){
+    const rect=document.querySelector('.canvas-wrap').getBoundingClientRect();
+    const dpr=window.devicePixelRatio||1;
+    grid.width=draw.width=Math.floor(rect.width*dpr);
+    grid.height=draw.height=Math.floor(rect.height*dpr);
+    gctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    drawGrid(); render();
+  }
+  let t; const ro=new ResizeObserver(()=>{clearTimeout(t); t=setTimeout(resizeCanvasToContainer,100);});
+  ro.observe(document.querySelector('.canvas-wrap'));
+  resizeCanvasToContainer();
+})();
+</script>
 </body>
 </html>
+

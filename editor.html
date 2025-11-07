@@ -44,9 +44,11 @@ box-shadow:0 10px 24px rgba(0,0,0,.35)}
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">Study Cards — Editor</div>
+    <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;">
+      <a class="tool" href="/Second-try/">&larr; Home</a>
+      <h1 style="margin:0;font-size:20px">Study Cards — Editor</h1>
+    </div>
     <div class="toolbar scroll-x">
-      <div class="tool-group">
         <button id="tool-pen" class="tool active" title="Pen (P) — long-press to change thickness">✏️ Pen</button>
         <div id="pen-pop" class="popover hidden">
           <label>Thickness <input id="pen-size" type="range" min="1" max="12" value="2"/></label>
